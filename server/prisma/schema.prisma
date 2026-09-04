@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  phone        String?
+  passwordHash String
+  role         Role
+  locationLat  Float?
+  locationLng  Float?
+  createdAt    DateTime @default(now())
+
+  donor  Donor?
+  ngo    NGOReceiver?
+  agent  DeliveryAgent?
+}
+
+enum Role {
+  DONOR
+  NGO
+  AGENT
+  ADMIN
+}
+
+model Donor {
+  id         String        @id @default(uuid())
+  userId     String        @unique
+  user       User          @relation(fields: [userId], references: [id])
+  donorType  DonorType
+  orgName    String
+  trustScore Float         @default(5.0)
+  listings   FoodListing[]
+}
+
+enum DonorType {
+  RESTAURANT
+  WEDDING
+  EVENT
+  CLOUD_KITCHEN
+  CATERER
+}
+
+model NGOReceiver {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  ngoName         String
+  capacityPerDay  Int
+  foodPreferences String[]
+  isVerified      Boolean  @default(false)
+  matches         Match[]
+}
+
+model DeliveryAgent {
+  id          String      @id @default(uuid())
+  userId      String      @unique
+  user        User        @relation(fields: [userId], references: [id])
+  vehicleType VehicleType
+  isAvailable Boolean     @default(true)
+  currentLat  Float?
+  currentLng  Float?
+  rating      Float       @default(5.0)
+  deliveries  Delivery[]
+}
+
+enum VehicleType {
+  BIKE
+  SCOOTER
+  TEMPO
+}
+
+model FoodListing {
+  id            String        @id @default(uuid())
+  donorId       String
+  donor         Donor         @relation(fields: [donorId], references: [id])
+  foodTypes     String[]
+  quantityKg    Float
+  pickupTiming  PickupTiming
+  expiryHours   Int           @default(3)
+  photoUrl      String?
+  status        ListingStatus @default(LISTED)
+  vehicleNeeded VehicleType
+  createdAt     DateTime      @default(now())
+  match         Match?
+}
+
+enum PickupTiming {
+  NOW
+  SCHEDULED_MORNING
+}
+
+enum ListingStatus {
+  LISTED
+  MATCHED
+  EXPIRED
+}
+
+model Match {
+  id                    String      @id @default(uuid())
+  listingId             String      @unique
+  listing               FoodListing @relation(fields: [listingId], references: [id])
+  ngoId                 String
+  ngo                   NGOReceiver @relation(fields: [ngoId], references: [id])
+  status                MatchStatus @default(PENDING)
+  fallbackCallTriggered Boolean     @default(false)
+  notifiedAt            DateTime    @default(now())
+  respondedAt           DateTime?
+  delivery              Delivery?
+}
+
+enum MatchStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model Delivery {
+  id          String         @id @default(uuid())
+  matchId     String         @unique
+  match       Match          @relation(fields: [matchId], references: [id])
+  agentId     String
+  agent       DeliveryAgent  @relation(fields: [agentId], references: [id])
+  status      DeliveryStatus @default(ASSIGNED)
+  pickedUpAt  DateTime?
+  deliveredAt DateTime?
+  createdAt   DateTime       @default(now())
+}
+
+enum DeliveryStatus {
+  ASSIGNED
+  PICKED_UP
+  IN_TRANSIT
+  DELIVERED
+}
