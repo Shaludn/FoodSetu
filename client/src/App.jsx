@@ -11,6 +11,7 @@ import AgentDashboard from './pages/agent/AgentDashboard';
 import AgentProfile from './pages/agent/AgentProfile';
 import AdminDashboard from './pages/admin/AdminDashboard';
 
+
 const RoleRouter = () => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" />;
@@ -33,6 +34,7 @@ function App() {
           <Route path="/donor/create-listing" element={<CreateListing />} />
           <Route path="/ngo/profile" element={<NGOProfile />} />
           <Route path="/agent/profile" element={<AgentProfile />} />
+          <Route path="/donor/profile" element={<DonorDashboard/>} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

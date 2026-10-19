@@ -1,3 +1,4 @@
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,19 +9,99 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(uuid())
+  id           String         @id @default(uuid())
   name         String
-  email        String   @unique
+  email        String         @unique
   phone        String?
   passwordHash String
   role         Role
   locationLat  Float?
   locationLng  Float?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime       @default(now())
+  agent        DeliveryAgent?
+  donor        Donor?
+  ngo          NGOReceiver?
+}
 
-  donor  Donor?
-  ngo    NGOReceiver?
-  agent  DeliveryAgent?
+model Donor {
+  id         String        @id @default(uuid())
+  userId     String        @unique
+  donorType  DonorType
+  orgName    String
+  trustScore Float         @default(5.0)
+  user       User          @relation(fields: [userId], references: [id])
+  listings   FoodListing[]
+}
+
+model NGOReceiver {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  ngoName         String
+  capacityPerDay  Int
+  foodPreferences String[]
+  isVerified      Boolean  @default(false)
+  nightOperations Boolean  @default(false)
+  matches         Match[]
+  user            User     @relation(fields: [userId], references: [id])
+}
+
+model DeliveryAgent {
+  id          String      @id @default(uuid())
+  userId      String      @unique
+  vehicleType VehicleType
+  isAvailable Boolean     @default(true)
+  currentLat  Float?
+  currentLng  Float?
+  rating      Float       @default(5.0)
+  deliveries  Delivery[]
+  user        User        @relation(fields: [userId], references: [id])
+}
+
+model FoodListing {
+  id            String        @id @default(uuid())
+  donorId       String
+  foodTypes     String[]
+  quantityKg    Float
+  pickupTiming  PickupTiming
+  expiryHours   Int           @default(3)
+  photoUrl      String?
+  status        ListingStatus @default(LISTED)
+  vehicleNeeded VehicleType
+  createdAt     DateTime      @default(now())
+  donor         Donor         @relation(fields: [donorId], references: [id])
+  match         Match?
+}
+
+model Match {
+  id                    String      @id @default(uuid())
+  listingId             String      @unique
+  ngoId                 String
+  status                MatchStatus @default(PENDING)
+  fallbackCallTriggered Boolean     @default(false)
+  notifiedAt            DateTime    @default(now())
+  respondedAt           DateTime?
+  delivery              Delivery?
+  listing               FoodListing @relation(fields: [listingId], references: [id])
+  ngo                   NGOReceiver @relation(fields: [ngoId], references: [id])
+}
+
+model Delivery {
+  id             String         @id @default(uuid())
+  matchId        String         @unique
+  agentId        String
+  status         DeliveryStatus @default(ASSIGNED)
+  pickedUpAt     DateTime?
+  deliveredAt    DateTime?
+  proofPhotoUrl  String?
+  createdAt      DateTime       @default(now())
+  agent          DeliveryAgent  @relation(fields: [agentId], references: [id])
+  match          Match          @relation(fields: [matchId], references: [id])
+}
+
+model playing_with_neon {
+  id    Int    @id @default(autoincrement())
+  name  String
+  value Float? @db.Real
 }
 
 enum Role {
@@ -28,16 +109,6 @@ enum Role {
   NGO
   AGENT
   ADMIN
-}
-
-model Donor {
-  id         String        @id @default(uuid())
-  userId     String        @unique
-  user       User          @relation(fields: [userId], references: [id])
-  donorType  DonorType
-  orgName    String
-  trustScore Float         @default(5.0)
-  listings   FoodListing[]
 }
 
 enum DonorType {
@@ -48,48 +119,10 @@ enum DonorType {
   CATERER
 }
 
-model NGOReceiver {
-  id              String   @id @default(uuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id])
-  ngoName         String
-  capacityPerDay  Int
-  foodPreferences String[]
-  isVerified      Boolean  @default(false)
-  matches         Match[]
-}
-
-model DeliveryAgent {
-  id          String      @id @default(uuid())
-  userId      String      @unique
-  user        User        @relation(fields: [userId], references: [id])
-  vehicleType VehicleType
-  isAvailable Boolean     @default(true)
-  currentLat  Float?
-  currentLng  Float?
-  rating      Float       @default(5.0)
-  deliveries  Delivery[]
-}
-
 enum VehicleType {
   BIKE
   SCOOTER
   TEMPO
-}
-
-model FoodListing {
-  id            String        @id @default(uuid())
-  donorId       String
-  donor         Donor         @relation(fields: [donorId], references: [id])
-  foodTypes     String[]
-  quantityKg    Float
-  pickupTiming  PickupTiming
-  expiryHours   Int           @default(3)
-  photoUrl      String?
-  status        ListingStatus @default(LISTED)
-  vehicleNeeded VehicleType
-  createdAt     DateTime      @default(now())
-  match         Match?
 }
 
 enum PickupTiming {
@@ -103,35 +136,10 @@ enum ListingStatus {
   EXPIRED
 }
 
-model Match {
-  id                    String      @id @default(uuid())
-  listingId             String      @unique
-  listing               FoodListing @relation(fields: [listingId], references: [id])
-  ngoId                 String
-  ngo                   NGOReceiver @relation(fields: [ngoId], references: [id])
-  status                MatchStatus @default(PENDING)
-  fallbackCallTriggered Boolean     @default(false)
-  notifiedAt            DateTime    @default(now())
-  respondedAt           DateTime?
-  delivery              Delivery?
-}
-
 enum MatchStatus {
   PENDING
   ACCEPTED
   DECLINED
-}
-
-model Delivery {
-  id          String         @id @default(uuid())
-  matchId     String         @unique
-  match       Match          @relation(fields: [matchId], references: [id])
-  agentId     String
-  agent       DeliveryAgent  @relation(fields: [agentId], references: [id])
-  status      DeliveryStatus @default(ASSIGNED)
-  pickedUpAt  DateTime?
-  deliveredAt DateTime?
-  createdAt   DateTime       @default(now())
 }
 
 enum DeliveryStatus {
